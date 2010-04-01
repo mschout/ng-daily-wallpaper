@@ -1,0 +1,137 @@
+#!perl
+# ABSTRACT: use National Geographic daily photo of the day as desktop background
+
+use strict;
+use autodie ':all';
+use File::Path 'mkpath';
+use Getopt::Long;
+use Imager;
+use POSIX 'strftime';
+use Pod::Usage::CommandLine qw(GetOptions pod2usage);
+use WWW::Mechanize;
+use X11::Resolution;
+
+my %opts = (
+    monitors => 1,
+    dir      => "$ENV{HOME}/Pictures/National Geographic"
+);
+
+GetOptions(\%opts, 'monitors|m=i') or pod2usage;
+
+my $url =
+    'http://photography.nationalgeographic.com/photography/photo-of-the-day/';
+my $mech      = new WWW::Mechanize;
+my $date      = strftime('%Y-%m-%d', localtime);
+
+my $tempfile = download_picture();
+
+if (-e $tempfile) {
+    my $scalefile = resize_picture($tempfile);
+    system qw(gconftool-2 --type string --set /desktop/gnome/background/picture_filename), $scalefile;
+}
+
+sub get_resolution {
+    my ($w, $h) = X11::Resolution->new->getResolution;
+
+    # if multiple displays, divide by num monitors
+    if ($opts{monitors} > 1) {
+        $w = int($w / $opts{monitors});
+    }
+
+    return ($w,$h);
+}
+
+# download source picture from National Geographic and save
+sub download_picture {
+    my $tempfile  = "$opts{dir}/${date}-orig.jpg";
+
+    return $tempfile if -e $tempfile;
+
+    $mech->get($url);
+
+    my $link = $mech->find_link(text_regex => qr/download wallpaper/i)
+        or die "failed to find wallpaper download link";
+
+    unless (-d $opts{dir}) {
+        mkpath $opts{dir};
+    }
+
+    $mech->get($link, ':content_file' => $tempfile);
+
+    return $tempfile;
+}
+
+# resize picture to screen resolution
+# gnome does not allow setting separate images per display (sigh), so the
+# wallpaper must be a size that will tile evenly across each display
+sub resize_picture {
+    my $file = shift;
+
+    return unless -e $file;     # no source file
+
+    my ($width, $height) = get_resolution();
+
+    my $scalefile = "$opts{dir}/$date-${width}x${height}.jpg";
+
+    return $scalefile if -e $scalefile;    # already resized
+
+    my $image = Imager->new;
+    $image->read(file => $file) or die $image->errstr;
+
+    if ($width == $image->getwidth and $height == $image->getheight) {
+        # display matches image resolution
+        return $file;
+    }
+
+    my $scaled = $image->copy;
+
+    if ($scaled->getwidth != $width) {
+        # scale to fit exactly width
+        $scaled = $scaled->scale(xpixels => $width);
+    }
+
+    if ($scaled->getheight > $height) {
+        # center-crop height
+        $scaled = $scaled->crop(width => $width, height => $height);
+    }
+
+    $scaled->write(file => $scalefile);
+
+    return $scalefile;
+}
+
+1;
+
+__END__
+
+=head1 SYNOPSIS
+
+ng-daily-wallpaper [options]
+
+    Options:
+        --help       display this help message
+        --monitors   number of displays
+        --dir        directory where images are saved
+
+=head1 DESCRIPTION
+
+This program downloads the current picture of the day from National Geographic,
+resizes a copy to fit your monitor, and sets it as your desktop background.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<--dir, -d>
+
+Set directory where images are saved.
+
+default: C<$HOME/Pictures/National Geographic>
+
+=item B<--monitors, -m>
+
+Set the number of displays in use.  The picture will be scaled to fit on exactly one display.
+
+Default: 1
+
+=back
