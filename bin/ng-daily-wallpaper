@@ -16,14 +16,16 @@ my %opts = (
     dir      => "$ENV{HOME}/Pictures/National Geographic"
 );
 
-GetOptions(\%opts, 'monitors|m=i') or pod2usage;
+GetOptions(\%opts,
+    'monitors|m=i',
+    'dir|d=s',
+    'date=s') or pod2usage;
 
 my $url =
     'http://photography.nationalgeographic.com/photography/photo-of-the-day/';
 my $mech      = new WWW::Mechanize;
-my $date      = strftime('%Y-%m-%d', localtime);
-
-my $tempfile = download_picture();
+my $date      = $opts{date} || strftime('%Y-%m-%d', localtime);
+my $tempfile  = download_picture();
 
 if (-e $tempfile) {
     my $scalefile = resize_picture($tempfile);
@@ -112,6 +114,7 @@ ng-daily-wallpaper [options]
         --help       display this help message
         --monitors   number of displays
         --dir        directory where images are saved
+        --date       use previously downloaded picture for this date
 
 =head1 DESCRIPTION
 
@@ -121,6 +124,12 @@ resizes a copy to fit your monitor, and sets it as your desktop background.
 =head1 OPTIONS
 
 =over 4
+
+=item B<--date>
+
+Use the given date.  If a picture was already downloaded for that date, then
+that picture will be used.  Otherwise the current picture will be downloaded
+and saved for the given date.
 
 =item B<--dir, -d>
 
