@@ -13,11 +13,13 @@ use X11::Resolution;
 
 my %opts = (
     monitors => 1,
+    prev     => 0,
     dir      => "$ENV{HOME}/Pictures/National Geographic"
 );
 
 GetOptions(\%opts,
     'monitors|m=i',
+    'prev|p=i',
     'dir|d=s',
     'date=s') or pod2usage;
 
@@ -50,6 +52,10 @@ sub download_picture {
     return $tempfile if -e $tempfile;
 
     $mech->get($url);
+
+    for (1 .. $opts{prev}) {
+        $mech->follow_link(text_regex => qr/previous/i);
+    }
 
     my $link = $mech->find_link(text_regex => qr/download wallpaper/i)
         or die "failed to find wallpaper download link";
@@ -115,6 +121,7 @@ ng-daily-wallpaper [options]
         --monitors   number of displays
         --dir        directory where images are saved
         --date       use previously downloaded picture for this date
+        --prev       get Nth previoius picture of the day (up to 3)
 
 =head1 DESCRIPTION
 
@@ -142,5 +149,12 @@ default: C<$HOME/Pictures/National Geographic>
 Set the number of displays in use.  The picture will be scaled to fit on exactly one display.
 
 Default: 1
+
+=item B<--prev, -p>
+
+Get Nth previous picture of the day. This may not work for large values.
+Download links are not always available on older pictures of the day.
+
+Default: 0 (get current day's picture)
 
 =back
