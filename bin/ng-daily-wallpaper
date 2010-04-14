@@ -47,7 +47,8 @@ sub get_resolution {
 
 # download source picture from National Geographic and save
 sub download_picture {
-    my $tempfile  = "$opts{dir}/${date}-orig.jpg";
+    my $origdir   = "$opts{dir}/orig";
+    my $tempfile  = "$origdir/${date}.jpg";
 
     return $tempfile if -e $tempfile;
 
@@ -60,8 +61,8 @@ sub download_picture {
     my $link = $mech->find_link(text_regex => qr/download wallpaper/i)
         or die "failed to find wallpaper download link";
 
-    unless (-d $opts{dir}) {
-        mkpath $opts{dir};
+    unless (-d $origdir) {
+        mkpath $origdir;
     }
 
     $mech->get($link, ':content_file' => $tempfile);
@@ -79,9 +80,14 @@ sub resize_picture {
 
     my ($width, $height) = get_resolution();
 
-    my $scalefile = "$opts{dir}/$date-${width}x${height}.jpg";
+    my $scaledir  = "$opts{dir}/${width}x${height}";
+    my $scalefile = "$scaledir/$date.jpg";
 
     return $scalefile if -e $scalefile;    # already resized
+
+    unless (-d $scaledir) {
+        mkpath $scaledir;
+    }
 
     my $image = Imager->new;
     $image->read(file => $file) or die $image->errstr;
