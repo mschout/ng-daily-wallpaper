@@ -12,16 +12,18 @@ use WWW::Mechanize;
 use X11::Resolution;
 
 my %opts = (
-    monitors => 1,
-    prev     => 0,
-    dir      => "$ENV{HOME}/Pictures/National Geographic"
+    monitors        => 1,
+    prev            => 0,
+    'download-only' => 0,
+    dir             => "$ENV{HOME}/Pictures/National Geographic"
 );
 
 GetOptions(\%opts,
     'monitors|m=i',
     'prev|p=i',
     'dir|d=s',
-    'date=s') or pod2usage;
+    'date=s',
+    'download-only') or pod2usage;
 
 my $url =
     'http://photography.nationalgeographic.com/photography/photo-of-the-day/';
@@ -31,7 +33,9 @@ my $tempfile  = download_picture();
 
 if (-e $tempfile) {
     my $scalefile = resize_picture($tempfile);
-    system qw(gconftool-2 --type string --set /desktop/gnome/background/picture_filename), $scalefile;
+    unless ($opts{'download-only'}) {
+        system qw(gconftool-2 --type string --set /desktop/gnome/background/picture_filename), $scalefile;
+    }
 }
 
 sub get_resolution {
@@ -123,11 +127,12 @@ __END__
 ng-daily-wallpaper [options]
 
     Options:
-        --help       display this help message
-        --monitors   number of displays
-        --dir        directory where images are saved
-        --date       use previously downloaded picture for this date
-        --prev       get Nth previoius picture of the day (up to 3)
+        --help          display this help message
+        --monitors      number of displays
+        --dir           directory where images are saved
+        --date          use previously downloaded picture for this date
+        --prev          get Nth previoius picture of the day (up to 3)
+        --download-only only download picture (do not set as wallpaper)
 
 =head1 DESCRIPTION
 
@@ -149,6 +154,10 @@ and saved for the given date.
 Set directory where images are saved.
 
 default: C<$HOME/Pictures/National Geographic>
+
+=item B<--download-only>
+
+Just download the picture and resize it.  Do not set as desktop wallpaper
 
 =item B<--monitors, -m>
 
