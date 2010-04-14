@@ -1,6 +1,8 @@
 Revision history for ng-daily-wallpaper
 
 {{$NEXT}}
+
+0.03  2010-04-14
     - add --date option
     - process --dir option
     - add --prev option to get previous pictures of the day
