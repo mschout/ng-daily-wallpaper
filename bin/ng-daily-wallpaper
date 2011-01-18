@@ -5,21 +5,16 @@ use strict;
 use autodie ':all';
 use File::Path 'mkpath';
 use Getopt::Long;
-use Imager;
 use POSIX 'strftime';
 use Pod::Usage::CommandLine qw(GetOptions pod2usage);
 use WWW::Mechanize;
-use X11::Resolution;
 
 my %opts = (
-    monitors        => 1,
     prev            => 0,
     'download-only' => 0,
-    dir             => "$ENV{HOME}/Pictures/National Geographic"
-);
+    dir             => "$ENV{HOME}/Pictures/National Geographic");
 
 GetOptions(\%opts,
-    'monitors|m=i',
     'prev|p=i',
     'dir|d=s',
     'date=s',
@@ -27,32 +22,20 @@ GetOptions(\%opts,
 
 my $url =
     'http://photography.nationalgeographic.com/photography/photo-of-the-day/';
-my $mech      = new WWW::Mechanize;
-my $date      = $opts{date} || strftime('%Y-%m-%d', localtime);
-my $tempfile  = download_picture();
+my $mech    = WWW::Mechanize->new;
+my $date    = $opts{date} || strftime('%Y-%m-%d', localtime);
+my $picfile = download_picture();
 
-if (-e $tempfile) {
-    my $scalefile = resize_picture($tempfile);
+if (-e $picfile) {
     unless ($opts{'download-only'}) {
-        system qw(gconftool-2 --type string --set /desktop/gnome/background/picture_filename), $scalefile;
+        system qw(gconftool-2 --type string --set /desktop/gnome/background/picture_filename), $picfile;
+        system qw(gconftool-2 --type string --set /desktop/gnome/background/picture_options zoom);
     }
-}
-
-sub get_resolution {
-    my ($w, $h) = X11::Resolution->new->getResolution;
-
-    # if multiple displays, divide by num monitors
-    if ($opts{monitors} > 1) {
-        $w = int($w / $opts{monitors});
-    }
-
-    return ($w,$h);
 }
 
 # download source picture from National Geographic and save
 sub download_picture {
-    my $origdir   = "$opts{dir}/orig";
-    my $tempfile  = "$origdir/${date}.jpg";
+    my $tempfile  = "$opts{dir}/${date}.jpg";
 
     return $tempfile if -e $tempfile;
 
@@ -65,57 +48,13 @@ sub download_picture {
     my $link = $mech->find_link(text_regex => qr/download wallpaper/i)
         or die "failed to find wallpaper download link";
 
-    unless (-d $origdir) {
-        mkpath $origdir;
+    unless (-d $opts{dir}) {
+        mkpath $opts{dir};
     }
 
     $mech->get($link, ':content_file' => $tempfile);
 
     return $tempfile;
-}
-
-# resize picture to screen resolution
-# gnome does not allow setting separate images per display (sigh), so the
-# wallpaper must be a size that will tile evenly across each display
-sub resize_picture {
-    my $file = shift;
-
-    return unless -e $file;     # no source file
-
-    my ($width, $height) = get_resolution();
-
-    my $scaledir  = "$opts{dir}/${width}x${height}";
-    my $scalefile = "$scaledir/$date.jpg";
-
-    return $scalefile if -e $scalefile;    # already resized
-
-    unless (-d $scaledir) {
-        mkpath $scaledir;
-    }
-
-    my $image = Imager->new;
-    $image->read(file => $file) or die $image->errstr;
-
-    if ($width == $image->getwidth and $height == $image->getheight) {
-        # display matches image resolution
-        return $file;
-    }
-
-    my $scaled = $image->copy;
-
-    if ($scaled->getwidth != $width) {
-        # scale to fit exactly width
-        $scaled = $scaled->scale(xpixels => $width);
-    }
-
-    if ($scaled->getheight > $height) {
-        # center-crop height
-        $scaled = $scaled->crop(width => $width, height => $height);
-    }
-
-    $scaled->write(file => $scalefile);
-
-    return $scalefile;
 }
 
 1;
@@ -128,7 +67,6 @@ ng-daily-wallpaper [options]
 
     Options:
         --help          display this help message
-        --monitors      number of displays
         --dir           directory where images are saved
         --date          use previously downloaded picture for this date
         --prev          get Nth previoius picture of the day (up to 3)
@@ -158,12 +96,6 @@ default: C<$HOME/Pictures/National Geographic>
 =item B<--download-only>
 
 Just download the picture and resize it.  Do not set as desktop wallpaper
-
-=item B<--monitors, -m>
-
-Set the number of displays in use.  The picture will be scaled to fit on exactly one display.
-
-Default: 1
 
 =item B<--prev, -p>
 
