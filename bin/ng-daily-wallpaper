@@ -45,8 +45,8 @@ sub download_picture {
         $mech->follow_link(text_regex => qr/previous/i);
     }
 
-    my $link = $mech->find_link(text_regex => qr/download wallpaper/i)
-        or die "failed to find wallpaper download link";
+    my $link = $mech->find_link(text_regex => qr/download wallpaper.*pixels/i)
+        or die "This wallpaper is not downloadable\n";
 
     unless (-d $opts{dir}) {
         mkpath $opts{dir};

@@ -1,6 +1,8 @@
 Revision history for ng-daily-wallpaper
 
 {{$NEXT}}
+    - update download link so that it does not match another link on the page
+    - update "not found" message so it is more useful.
 
 0.03  2010-04-14
     - add --date option
