@@ -1,6 +1,7 @@
 Revision history for ng-daily-wallpaper
 
 {{$NEXT}}
+    - fix twitter URL
 
 0.04  2011-01-20
     - update download link so that it does not match another link on the page
