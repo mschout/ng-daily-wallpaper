@@ -1,6 +1,8 @@
 Revision history for ng-daily-wallpaper
 
 {{$NEXT}}
+
+0.04  2011-01-20
     - update download link so that it does not match another link on the page
     - update "not found" message so it is more useful.
     - enable Twitter DZIL plugin
